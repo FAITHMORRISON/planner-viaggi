@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Travel Manager</title>
+    <style>
+        :root {
+            --primary: #2c3e50; --accent: #3498db; --success: #2ecc71;
+            --alloggio: #e67e22; --cibo: #e74c3c; --cultura: #9b59b6; --svago: #f1c40f;
+        }
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; margin: 0; padding: 20px; color: var(--primary); }
+        h1, h2 { text-align: center; }
+        
+        /* Form di Inserimento */
+        .main-form { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 800px; margin: 0 auto 30px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+        input, select, button { padding: 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px; }
+        button { background: var(--success); color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { opacity: 0.9; }
+
+        /* Dashboard a Box */
+        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 40px; }
+        .category-box { background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); min-height: 300px; }
+        .cat-header { padding: 15px; color: white; font-weight: bold; text-align: center; font-size: 1.1rem; }
+        
+        /* Colori Categorie */
+        .bg-alloggio { background: var(--alloggio); }
+        .bg-cibo { background: var(--cibo); }
+        .bg-cultura { background: var(--cultura); }
+        .bg-svago { background: var(--svago); }
+
+        /* Card Luogo */
+        .card { padding: 15px; border-bottom: 1px solid #eee; position: relative; }
+        .card:last-child { border-bottom: none; }
+        .card strong { display: block; font-size: 1.1rem; }
+        .card span { font-size: 0.85rem; color: #666; }
+        .actions { margin-top: 10px; display: flex; gap: 5px; }
+        .btn-map { background: var(--accent); font-size: 0.75rem; padding: 5px 10px; }
+        .btn-del { background: #eee; color: #666; font-size: 0.75rem; padding: 5px 10px; }
+
+        /* Checklist Pre-Partenza (Fase 2) */
+        .checklist-section { background: #fff; padding: 20px; border-radius: 15px; max-width: 800px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .check-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px dashed #eee; }
+        .check-item input { width: 18px; height: 18px; }
+    </style>
+</head>
+<body>
+
+    <h1>🌍 Travel Manager Pro</h1>
+
+    <div class="main-form">
+        <input type="text" id="nome" placeholder="Cosa? (es. Louvre)">
+        <select id="categoria">
+            <option value="alloggio">🏠 Alloggio</option>
+            <option value="cibo">🍕 Cibo & Drink</option>
+            <option value="cultura" selected>🎨 Arte & Cultura</option>
+            <option value="svago">🎭 Eventi & Svago</option>
+        </select>
+        <input type="text" id="indirizzo" placeholder="Indirizzo o Città">
+        <input type="number" id="budget" placeholder="Budget €">
+        <button onclick="salvaDato()">Aggiungi Luogo</button>
+    </div>
+
+    <div class="dashboard">
+        <div class="category-box" id="box-alloggio">
+            <div class="cat-header bg-alloggio">🏠 Alloggi</div>
+            <div class="list" id="list-alloggio"></div>
+        </div>
+        <div class="category-box" id="box-cibo">
+            <div class="cat-header bg-cibo">🍕 Cibo & Drink</div>
+            <div class="list" id="list-cibo"></div>
+        </div>
+        <div class="category-box" id="box-cultura">
+            <div class="cat-header bg-cultura">🎨 Arte & Cultura</div>
+            <div class="list" id="list-cultura"></div>
+        </div>
+        <div class="category-box" id="box-svago">
+            <div class="cat-header bg-svago">🎭 Eventi & Svago</div>
+            <div class="list" id="list-svago"></div>
+        </div>
+    </div>
+
+    <div class="checklist-section">
+        <h2>✈️ Travel Assistant: Checklist Pre-Partenza</h2>
+        <div id="checklist-content">
+            <div class="check-item"><input type="checkbox"> <span><b>Passaporto:</b> Scadenza > 6 mesi</span></div>
+            <div class="check-item"><input type="checkbox"> <span><b>Visto:</b> Controlla ESTA/ETA o Visti</span></div>
+            <div class="check-item"><input type="checkbox"> <span><b>Assicurazione:</b> Copertura sanitaria estero</span></div>
+            <div class="check-item"><input type="checkbox"> <span><b>SIM Dati:</b> Acquista eSIM o piano Roaming</span></div>
+            <div class="check-item"><input type="checkbox"> <span><b>Valuta:</b> Prenota cambio o sblocca carte</span></div>
+            <div class="check-item"><input type="checkbox"> <span><b>Prese:</b> Controlla tipo di adattatore</span></div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURAZIONE ---
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxNQ8B4fCKrYQH5VqiKaf0-qaGAivP7ztywfAqdKFEyJB7RDkgnhgk0FGQziVvc8i9m/exec";
+
+        async function caricaDati() {
+            try {
+                const res = await fetch(SCRIPT_URL);
+                const data = await res.json();
+                renderCards(data);
+            } catch (e) { console.error("Errore caricamento", e); }
+        }
+
+        function renderCards(data) {
+            document.querySelectorAll('.list').forEach(l => l.innerHTML = '');
+            data.forEach(item => {
+                const card = `
+                    <div class="card">
+                        <strong>${item.Nome}</strong>
+                        <span>📍 ${item.Indirizzo}</span><br>
+                        <span>💰 Budget: ${item.Budget}€</span>
+                        <div class="actions">
+                            <button class="btn-map" onclick="apriMappa('${item.Indirizzo}')">🗺️ Mappa</button>
+                            <button class="btn-del" onclick="eliminaDato('${item.Nome}')">🗑️</button>
+                        </div>
+                    </div>`;
+                
+                const targetList = document.getElementById('list-' + item.Categoria.toLowerCase());
+                if(targetList) targetList.innerHTML += card;
+                else document.getElementById('list-svago').innerHTML += card;
+            });
+        }
+
+        async function salvaDato() {
+            const btn = document.querySelector('button');
+            btn.disabled = true; btn.innerText = "Salvataggio...";
+            
+            const payload = {
+                action: "add",
+                nome: document.getElementById('nome').value,
+                categoria: document.getElementById('categoria').value,
+                indirizzo: document.getElementById('indirizzo').value,
+                budget: document.getElementById('budget').value,
+                note: ""
+            };
+
+            await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+            
+            // Pulisci form e ricarica
+            document.getElementById('nome').value = '';
+            document.getElementById('indirizzo').value = '';
+            btn.disabled = false; btn.innerText = "Aggiungi Luogo";
+            caricaDati();
+        }
+
+        async function eliminaDato(nome) {
+            if(!confirm("Eliminare " + nome + "?")) return;
+            await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({action: "delete", nome: nome}) });
+            caricaDati();
+        }
+
+        function apriMappa(indirizzo) {
+            window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(indirizzo)}`, '_blank');
+        }
+
+        // Avvio
+        caricaDati();
+    </script>
+</body>
+</html>
